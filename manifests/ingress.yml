@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+    name: "shengrossdevopsdemo-a3d3"
+    labels:
+        app: "shengrossdevopsdemo-a3d3"
+    annotations:
+        kubernetes.io/ingress.class: addon-http-application-routing
+spec:
+    rules:
+        - host: shengrossdevopsdemo9007-shengrossdevopsdemo-a3d3.0ae56663952b4f9ba4df.westeurope.aksapp.io
+          http:
+            paths:
+            - path: /
+              backend:
+                serviceName: "shengrossdevopsdemo-a3d3"
+                servicePort: 8080
