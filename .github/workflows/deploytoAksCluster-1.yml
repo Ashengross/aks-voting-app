@@ -1,0 +1,51 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: shengrossdevopsdemoacr.azurecr.io
+        username: ${{ secrets.acr_shengrossdevopsdemoacr_username }}
+        password: ${{ secrets.acr_shengrossdevopsdemoacr_password }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/src/app/2.0" -f  "src/app/2.0/Dockerfile" -t shengrossdevopsdemoacr.azurecr.io/shengrossdevopsdemo:${{ github.sha }} --label dockerfile-path=src/app/2.0/Dockerfile
+        docker push shengrossdevopsdemoacr.azurecr.io/shengrossdevopsdemo:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{ secrets.aks_shengrossdevopsdemo_kubeConfig }}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep shengrossdevopsdemo9007 | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace shengrossdevopsdemo9007`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: shengrossdevopsdemo9007
+        container-registry-url: shengrossdevopsdemoacr.azurecr.io
+        container-registry-username: ${{ secrets.acr_shengrossdevopsdemoacr_username }}
+        container-registry-password: ${{ secrets.acr_shengrossdevopsdemoacr_password }}
+        secret-name: shengrossdevdockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: shengrossdevopsdemo9007
+        manifests: |
+          manifests/deployment-1.yml
+          manifests/service-1.yml
+          manifests/ingress-1.yml
+        images: |
+          shengrossdevopsdemoacr.azurecr.io/shengrossdevopsdemo:${{ github.sha }}
+        imagepullsecrets: |
+          shengrossdevdockerauth
